@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import {
+    getFirestore,
+    collection,
+    addDoc,
+    getDocs,
+    deleteDoc,
+    doc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCUp9V3Z1gKtXSJKfsB_Ht79fiMGv0G038",
+  authDomain: "laporan-harian-teknik-packing.firebaseapp.com",
+  projectId: "laporan-harian-teknik-packing",
+  storageBucket: "laporan-harian-teknik-packing.firebasestorage.app",
+  messagingSenderId: "554280893988",
+  appId: "1:554280893988:web:ad46ef520b5c4310f062b1"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+window.db = db;
+window.fb = {
+    collection,
+    addDoc,
+    getDocs,
+    deleteDoc,
+    doc
+};
+
+</script>
+    <title>Kalender Pasaran Jawa - Stack Edition</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; 
+            padding: 0;
+            background-color: #e3f2fd;
+            height: 90vh;
+            overflow-x: hidden;
+        }
+
+        .calendar-container {
+            background-image: linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.7)), url('bg3.webp');
+            width: 400px;
+            max-width: 95vw;
+            border: 1px solid #0007 ;
+            box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 12px;
+            margin-top: 50px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            z-index: 10;
+            position: relative;
+        }
+
+        .nav-buttons button {
+            padding: 8px 12px;
+            cursor: pointer;
+            border: 1px solid #0004;
+            background: #fff;
+            font-weight: bold;
+            border-radius: 10%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: 0.2s;
+        }
+
+        .nav-buttons button:active { transform: scale(0.9); }
+
+        .month-year {
+            font-size: 1.3em;
+            font-weight: 800;
+            color: #1a237e;
+        }
+
+        .table-wrapper {
+            position: relative;
+            width: 100%;
+            perspective: 1200px;
+            min-height: 320px;
+            overflow: hidden;
+        }
+
+        table {
+            position: relative;
+            width: 100%;
+            border-collapse: collapse;
+            text-align: center;
+            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+            transform-origin: center bottom;
+        }
+
+        .stack-exit-left {
+            transform: translateX(-120%) rotate(-15deg) scale(0.8);
+            opacity: 0;
+        }
+
+        .stack-exit-right {
+            transform: translateX(120%) rotate(15deg) scale(0.8);
+            opacity: 0;
+        }
+
+        .stack-enter {
+            transform: scale(0.8) translateY(20px);
+            opacity: 0;
+        }
+
+        .stack-active {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+
+        th {
+            padding: 8px 0;
+            font-size: 20px;
+            border: 1px solid #000;
+        }
+
+        .sun { color: #d32f2f; }
+
+        td {
+            padding: 5px 0;
+            border: 0.7px solid #0009;
+            width: 14.28%;
+            vertical-align: center;
+            height: 50px;
+            cursor: pointer;
+            position: relative; 
+        }
+
+        .date-num {
+            font-size: 22px;
+            font-weight: bold;
+            display: block;
+        }
+
+        .pasaran {
+            font-size: 0.7em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .today-highlight {
+            background-color: #00ffff !important;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .leave-highlight {
+            background-image: linear-gradient(310deg, #d32f2f 15%, transparent 5%);
+        }
+
+        .today-highlight.leave-highlight {
+            background-image: linear-gradient(45deg, #d32f2f 20%, #00ffff 20%) !important;
+        }
+
+        .bottom-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start; 
+            padding: 10px;
+            gap: 10px;
+        }
+
+        .holidays-list {
+            flex: 1; 
+            font-size: 0.85em;
+            padding: 15px;
+            padding-top: 5px;
+            border-top: 1px solid #eee;
+        }
+
+        .holiday {
+            color: #d32f2f !important;
+            font-weight: bold;
+        }
+
+        .action-buttons {
+            display: grid;
+            gap: 10px;
+            justify-content: right;
+            margin-top: 10px;
+            margin-right: 5px;
+        }
+        
+        .today-btn {
+            border: none;
+            border-radius: 10px;
+            padding-block: 10px;
+            color: #fff;
+            width: 50px;
+            background-color: #387C44;
+            cursor: pointer;
+        }
+
+        .author {
+            text-align: right;
+            font-size: 11px;
+            margin-top: 15px;
+            color: #555;
+        }
+
+        .modal-overlay,
+        .popup {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; 
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .popup-content {
+            background: #ADDFFF;
+            padding: 20px;
+            border-radius: 12px;
+            width: 85%;
+            max-width: 360px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            box-sizing: border-box;
+            text-align: left;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .popup-content h3 {
+            margin-top: 0;
+            text-align: center;
+            color: #1a237e;
+        }
+
+        .popup-content label {
+            font-weight: bold;
+            display: block;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+
+        .popup-content input,
+        .popup-content select {
+            background-color: #BDEDFF;
+            color: #000;
+            border: 1px solid rgba(0,0,0,0.3);
+            border-radius: 6px;
+            width: 100%;
+            margin-top: 4px;
+            padding: 8px 10px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+
+        /* --- STYLING CHECKLIST BOX MULTISELECT --- */
+        .checkbox-dropdown {
+            background-color: #BDEDFF;
+            border: 1px solid rgba(0,0,0,0.3);
+            border-radius: 6px;
+            margin-top: 4px;
+            max-height: 120px;
+            overflow-y: auto;
+            padding: 6px;
+            box-sizing: border-box;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+            font-size: 0.95em;
+            cursor: pointer;
+        }
+
+        .checkbox-item input {
+            width: auto !important;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .popup-buttons {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 20px;
+            gap: 10px;
+        }
+
+        .popup-buttons button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn-ganti { background: #387C44; color: white; }
+        .btn-batal { background: #d32f2f; color: white; }
+        .btn-hapus { 
+            background: #d32f2f; 
+            color: white; 
+            border: none; 
+            padding: 4px 10px; 
+            border-radius: 4px; 
+            cursor: pointer;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .detail-cuti-item {
+            background: #ADDFFF;
+            padding: 10px;
+            border-bottom: 1px dashed #0007;
+            margin-top: 8px;
+            font-size: 0.9em;
+            position: relative;
+        }
+        
+        .detail-row {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 4px;
+            gap: 10px;
+        }
+
+        .detail-row .label {
+            width: 90px;
+            font-weight: bold;
+        }
+
+        .detail-row .separator {
+            width: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .detail-row .value {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+
+<div id="holidayModal" class="modal-overlay">
+    <div class="popup-content">
+        <h3 id="modalTitle" style="color:#1a237e">Detail Hari</h3>
+        <p id="modalDetail" style="font-weight:bold; text-align: center;"></p>
+        <div id="modalCutiContent"></div>
+        <div style="text-align: center;">
+            <button onclick="closeModal()" style="background:SeaGreen; color:white; border:none; padding:8px 20px; border-radius:5px; cursor:pointer; margin-top:15px;">Tutup</button>
+        </div>
+    </div>
+</div>
+
+<div class="calendar-container" id="swipeArea">
+    <div class="header">
+        <div class="nav-buttons">
+            <button onclick="changeYear(-1)">&lt;&lt;</button>
+            <button onclick="changeMonth(-1)">&lt;</button>
+        </div>
+        <div class="month-year" id="monthYearDisplay"></div>
+        <div class="nav-buttons">
+            <button onclick="changeMonth(1)">&gt;</button>
+            <button onclick="changeYear(1)">&gt;&gt;</button>
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table id="calendarTable" class="stack-active">
+            <thead>
+                <tr>
+                    <th class="sun">M</th>
+                    <th>S</th><th>S</th><th>R</th><th>K</th><th>J</th><th>S</th>
+                </tr>
+            </thead>
+            <tbody id="calendarBody"></tbody>
+        </table>
+    </div>
+
+    <div class="bottom-area">
+        <div class="holidays-list" id="holidaysList"></div>
+        <div class="action-buttons">
+            <button class="today-btn" onclick="goToToday()">📅</button>
+            <button class="today-btn" onclick="openPopup()">👨🏻‍💼</button>
+            <button class="today-btn" onclick="toggleCutiLama()" id="toggleBtn">🕘</button>
+        </div>
+    </div>
+</div>
+
+<div id="popupForm" class="popup">
+    <div class="popup-content">
+        <h3>Form Pengajuan Cuti</h3>
+        
+        <label for="hariTglCuti">Hari/Tgl</label>
+        <input type="date" id="hariTglCuti">
+        
+        <label for="personilCuti">Personil Cuti</label>
+        <select id="personilCuti"></select>
+
+        <label>Long shift 1 (Bisa pilih lebih dari 1)</label>
+        <div class="checkbox-dropdown" id="longShift1Container"></div>
+        
+        <label>Long shift 2 (Bisa pilih lebih dari 1)</label>
+        <div class="checkbox-dropdown" id="longShift2Container"></div>
+        
+        <div class="popup-buttons">
+            <button onclick="simpanCuti()" class="btn-ganti">Simpan</button>
+            <button onclick="closeForm()" class="btn-batal">Batal</button>
+        </div>
+        <p class="author">© 2026. mastarno-AE</p>
+    </div>
+</div>
+
+<script>
+const daftarPersonil = [
+    { value: "Ruslan Budi", text: "Ruslan" },
+    { value: "Sutarno", text: "Sutarno" },
+    { value: "Sudirman", text: "Sudirman" },
+    { value: "Acep Apandi", text: "Acep" },
+    { value: "Agung Waluyo", text: "Agung" },
+    { value: "Agus Alwanto", text: "Agus Al" },
+    { value: "Agus Karna", text: "Agus K" },
+    { value: "Agus Surono", text: "Agus S" },
+    { value: "Aji Setiawan", text: "Aji" },
+    { value: "Alfi Syahrul R", text: "Alfi" },
+    { value: "Ali Sabana", text: "Ali" },
+    { value: "Andi Budianto", text: "Andi" },
+    { value: "Arif Munawar", text: "Arif M" },
+    { value: "Azis Muslim", text: "Azis M" },
+    { value: "Budi Narto", text: "Budi" },
+    { value: "Cahyo Yuswantoro", text: "Cahyo" },
+    { value: "Dede Sulaeman", text: "Dede s" },
+    { value: "Dodi Priyonggo", text: "Dodi" },
+    { value: "Dian Supiyana", text: "Dian" },
+    { value: "Dwiki Wahyu", text: "Wahyu" },
+    { value: "Eka Satya W", text: "Eka" },
+    { value: "Endang Purnama", text: "Endang" },
+    { value: "Heri Gunawan", text: "Heri G" },
+    { value: "Heri Setiad", text: "Heri S" },
+    { value: "Irwansyah", text: "Irwansyah" },
+    { value: "Kurniawan Yulianto", text: "Wawan" },
+    { value: "Maryadi", text: "Maryadi" },
+    { value: "Rahmat", text: "Rahmat" },
+    { value: "Rahmat Herdiyanto", text: "Rahmat H" },
+    { value: "Sandra Zulkifli", text: "Sandra" },
+    { value: "Sapto Kuncoro", text: "Sapto" },
+    { value: "Slamet", text: "Slamet" },
+    { value: "Sudarto", text: "Sudarto" },
+    { value: "Supangat", text: "Supangat" },
+    { value: "Taupik", text: "Taupik" },
+    { value: "Tidar Akbar", text: "Tidar" }
+];
+
+let dataCuti = [];
+let tampilkanCutiLama = false;
+
+const nationalHolidays = {
+    2026: {
+        0: [ {day:1, name:"Tahun Baru 2026 Masehi"}, {day:16, name:"Isra Mikraj Nabi Muhammad SAW"} ],
+        1: [ {day:17, name:"Tahun Baru Imlek 2577"} ],
+        2: [ {day:19, name:"Hari Raya Nyepi"}, {day:21, name:"Hari Raya Idul Fitri"}, {day:22, name:"Hari Raya Idul Fitri"} ],
+        3: [ {day:3, name:"Wafat Yesus Kristus"}, {day:5, name:"Hari Raya Paskah"} ],
+        4: [ {day:1, name:"Hari Buruh Internasional"}, {day:14, name:"Kenaikan Isa Almasih"}, {day:27, name:"Hari Raya Idul Adha"}, {day:31, name:"Hari Raya Waisak"} ],
+        5: [ {day:1, name:"Hari Lahir Pancasila"}, {day:16, name:"Tahun Baru Islam 1448 H"} ],
+        7: [ {day:17, name:"Hari Kemerdekaan RI"}, {day:15, name:"Maulid Nabi Muhammad SAW"} ],
+        11: [ {day:25, name:"Hari Raya Natal"} ]
+    }
+};
+
+let currentMonth = new Date().getMonth();
+let currentYear  = new Date().getFullYear();
+const monthNames = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+const dayNamesIndo = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+const pasaranDays = ["Legi","Pahing","Pon","Wage","Kliwon"];
+const refPasaranIdx = 2; 
+async function loadDataCuti() {
+
+    const snapshot = await fb.getDocs(
+        fb.collection(db, "cuti")
+    );
+
+    dataCuti = [];
+
+    snapshot.forEach((docSnap) => {
+
+        dataCuti.push({
+            id: docSnap.id,
+            ...docSnap.data()
+        });
+
+    });
+
+    renderCalendar(currentMonth, currentYear);
+}
+
+function inisialisasiForm() {
+    // Isi Dropdown Personil Utama
+    const selectEl = document.getElementById("personilCuti");
+    selectEl.innerHTML = '<option value="">-- Pilih Personil --</option>';
+    daftarPersonil.forEach(p => {
+        const option = document.createElement("option");
+        option.value = p.value;
+        option.textContent = p.text;
+        selectEl.appendChild(option);
+    });
+
+    // Buat Checklist Box untuk Long Shift 1 & 2
+    buatChecklistBox("longShift1Container", "ls1");
+    buatChecklistBox("longShift2Container", "ls2");
+}
+
+function buatChecklistBox(containerId, prefix) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = "";
+    daftarPersonil.forEach((p, index) => {
+        const label = document.createElement("label");
+        label.className = "checkbox-item";
+        
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.name = prefix;
+        checkbox.value = p.text; // Menggunakan nama singkatan agar tidak terlalu panjang saat ditampilkan
+        
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(p.text));
+        container.appendChild(label);
+    });
+}
+
+function getPasaran(date){
+    const d = new Date(date);
+    d.setHours(0,0,0,0);
+    const diff = Math.floor((d - new Date(2026,0,1).setHours(0,0,0,0))/(1000*60*60*24));
+    let idx = (refPasaranIdx + diff) % 5;
+    if(idx<0) idx+=5;
+    return pasaranDays[idx];
+}
+
+function formatTanggalIndonesia(dateObj) {
+    const hari = dayNamesIndo[dateObj.getDay()];
+    const tgl = dateObj.getDate();
+    const bulan = monthNames[dateObj.getMonth()];
+    const tahun = dateObj.getFullYear();
+    return `${hari}, ${tgl} ${bulan} ${tahun}`;
+}
+
+function showDayDetailsPopup(dateStr, libur, cellDate) {
+    const modalTitle = document.getElementById("modalTitle");
+    const modalDetail = document.getElementById("modalDetail");
+    const modalCutiContent = document.getElementById("modalCutiContent");
+
+    modalTitle.innerText = "Pengganti Cuti";
+    modalDetail.innerText = formatTanggalIndonesia(cellDate) + ` (${getPasaran(cellDate)})`;
+    modalCutiContent.innerHTML = "";
+
+    if (libur) {
+        modalCutiContent.innerHTML += `
+            <div class="detail-cuti-item" style="border-left-color: #d32f2f; background: #ffebee;">
+                <strong style="color: #d32f2f;">Hari Libur Nasional:</strong><br>
+                ${libur.name}
+            </div>
+        `;
+    }
+
+    // Ambil data cuti pada tanggal ini, sertakan index aslinya untuk fungsi hapus
+    const personilCutiHariIni =
+    dataCuti.filter(c => c.tanggal === dateStr);
+
+    if (personilCutiHariIni.length > 0) {
+        personilCutiHariIni.forEach(p => {
+            modalCutiContent.innerHTML += `
+                <div class="detail-cuti-item">
+                    <div class="detail-row">
+                        <span class="label">Personil Cuti</span>
+                        <span class="separator">:</span>
+                        <span class="value">${p.personil}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Long Shift 1</span>
+                        <span class="separator">:</span>
+                        <span class="value">${p.longShift1 || '-'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Long Shift 2</span>
+                        <span class="separator">:</span>
+                        <span class="value">${p.longShift2 || '-'}</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <button class="btn-hapus" onclick="hapusCuti('${p.id}')">Hapus Cuti</button>
+                    </div>
+                </div>
+            `;
+        });
+    } else if (!libur) {
+        modalCutiContent.innerHTML += `<p style="text-align:center; color:#666; font-style:italic; margin-top:15px;">Tidak ada agenda cuti atau libur.</p>`;
+    }
+
+    document.getElementById("holidayModal").style.display = "flex";
+}
+
+// Fungsi Baru: Menghapus data cuti berdasarkan index array
+async function hapusCuti(id) {
+
+    if(confirm("Apakah Anda yakin ingin menghapus data cuti ini?")) {
+
+        await fb.deleteDoc(
+            fb.doc(db, "cuti", id)
+        );
+
+        await loadDataCuti();
+
+        closeModal();
+    }
+} 
+
+function closeModal() { document.getElementById("holidayModal").style.display = "none"; }
+
+function renderCalendar(month, year, exitClass = ""){
+    const table = document.getElementById("calendarTable");
+    if(exitClass) {
+        table.className = exitClass;
+        setTimeout(() => {            
+            updateTableContent(month, year);
+            table.className = "stack-enter";
+            table.offsetHeight; 
+            table.className = "stack-active";
+        }, 300);
+    } else {
+        updateTableContent(month, year);
+    }
+}
+
+function updateTableContent(month, year) {
+    document.getElementById("monthYearDisplay").innerText = `${monthNames[month]} ${year}`;
+    const tbody = document.getElementById("calendarBody");
+    tbody.innerHTML = "";
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const today = new Date();
+
+    let date = 1;
+    for(let i=0; i<6; i++){
+        const row = document.createElement("tr");
+        let hasData = false;
+        for(let j=0; j<7; j++){
+            const cell = document.createElement("td");
+            if((i===0 && j<firstDay) || date > daysInMonth){
+                row.appendChild(cell);
+            } else {
+                hasData = true;
+                const thisDate = new Date(year, month, date);
+                if(j===0) cell.classList.add("sun");
+
+                const cellDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
+                const todayStr = new Date().toISOString().split("T")[0];
+
+                const adaCuti = dataCuti.some(c => {
+                    if (tampilkanCutiLama) {
+                        return c.tanggal === cellDateStr;
+                    }
+                    return c.tanggal === cellDateStr && c.tanggal >= todayStr;
+                });
+
+                let libur = null;
+                if(nationalHolidays[year] && nationalHolidays[year][month]){
+                    libur = nationalHolidays[year][month].find(h => h.day === date);
+                }
+
+                if(date===today.getDate() && month===today.getMonth() && year===today.getFullYear()){
+                    cell.classList.add("today-highlight");
+                }
+
+                if(adaCuti) {
+                    cell.classList.add("leave-highlight");
+                }
+
+                if(libur) {
+                    cell.classList.add("holiday");
+                }
+
+                cell.innerHTML = `<span class="date-num">${date}</span><div class="pasaran">${getPasaran(thisDate)}</div>`;
+                cell.onclick = () => showDayDetailsPopup(cellDateStr, libur, thisDate);
+
+                row.appendChild(cell);
+                date++;
+            }
+        }
+        if(hasData) tbody.appendChild(row);
+    }
+    renderHolidayList(month, year);
+}
+
+function renderHolidayList(month, year){
+    const box = document.getElementById("holidaysList");
+    box.innerHTML = "<strong>Hari Libur Nasional:</strong><br>";
+    const list = (nationalHolidays[year] && nationalHolidays[year][month]) || [];
+    if(list.length > 0){
+        list.forEach(h => {
+            box.innerHTML += `<div style="color: black; cursor:pointer; margin-top:3px;" onclick="showDayDetailsPopup('${year}-${String(month + 1).padStart(2, '0')}-${String(h.day).padStart(2, '0')}', ${JSON.stringify(h)}, new Date(${year}, ${month}, ${h.day}))">• ${h.day} ${monthNames[month]}: ${h.name}</div>`;
+        });
+    } else {
+        box.innerHTML += "<em>Tidak ada libur nasional</em>";
+    }
+}
+
+function changeMonth(dir){
+    const exitAnim = dir > 0 ? "stack-exit-left" : "stack-exit-right";
+    currentMonth += dir;
+    if(currentMonth < 0){ currentMonth = 11; currentYear--; }
+    if(currentMonth > 11){ currentMonth = 0; currentYear++; }
+    renderCalendar(currentMonth, currentYear, exitAnim);
+}
+
+function changeYear(dir){
+    currentYear += dir;
+    renderCalendar(currentMonth, currentYear, "stack-enter");
+}
+
+function goToToday() {
+    const now = new Date();
+    if(currentMonth === now.getMonth() && currentYear === now.getFullYear()) return;
+    currentMonth = now.getMonth();
+    currentYear = now.getFullYear();
+    renderCalendar(currentMonth, currentYear, "stack-enter");
+}
+
+function toggleCutiLama() {
+    tampilkanCutiLama = !tampilkanCutiLama;
+    const btn = document.getElementById("toggleBtn");
+    if (tampilkanCutiLama) {
+        btn.innerText = "📂";
+        btn.title = "Sembunyikan cuti lama";
+    } else {
+        btn.innerText = "🕘";
+        btn.title = "Tampilkan cuti lama";
+    }
+    renderCalendar(currentMonth, currentYear);
+}
+
+let startX = 0;
+document.getElementById('swipeArea').addEventListener('touchstart', e => startX = e.touches[0].clientX);
+document.getElementById('swipeArea').addEventListener('touchend', e => {
+    const diff = startX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) changeMonth(diff > 0 ? 1 : -1);
+});
+
+// Jalankan inisialisasi
+inisialisasiForm();
+loadDataCuti();
+
+function openPopup() { document.getElementById("popupForm").style.display = "flex"; }
+function closeForm() { 
+    document.getElementById("popupForm").style.display = "none"; 
+    resetForm();
+}
+
+function resetForm() {
+    document.getElementById("hariTglCuti").value = "";
+    document.getElementById("personilCuti").value = "";
+    
+    // Uncheck semua checkbox long shift
+    const checkboxes = document.querySelectorAll('#popupForm input[type="checkbox"]');
+    checkboxes.forEach(cb => cb.checked = false);
+}
+
+async function simpanCuti() {
+
+    const tanggal = document.getElementById("hariTglCuti").value;
+    const personil = document.getElementById("personilCuti").value;
+
+    const checkedLS1 = Array.from(
+        document.querySelectorAll('input[name="ls1"]:checked')
+    ).map(cb => cb.value);
+
+    const checkedLS2 = Array.from(
+        document.querySelectorAll('input[name="ls2"]:checked')
+    ).map(cb => cb.value);
+
+    if (!tanggal || !personil) {
+        alert("⚠️ Data wajib diisi!");
+        return;
+    }
+
+    await fb.addDoc(
+        fb.collection(db, "cuti"),
+        {
+            tanggal,
+            personil,
+            longShift1: checkedLS1.length ? checkedLS1.join(', ') : '-',
+            longShift2: checkedLS2.length ? checkedLS2.join(', ') : '-'
+        }
+    );
+
+    await loadDataCuti();
+
+    closeForm();
+}
+</script>
+
+</body>
+</html>
